@@ -1,0 +1,8 @@
+{
+  "name": "bazarbase-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "razorpay": "^2.9.4",
+    "firebase-admin": "^12.1.0"
+  }
+}
