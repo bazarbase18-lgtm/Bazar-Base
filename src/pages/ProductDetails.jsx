@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { extractProductId } from '../lib/slug'
 import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { thumb } from '../lib/cloudinary'
@@ -7,7 +8,8 @@ import ProductCard from '../components/ProductCard'
 import BuyNowModal from '../components/BuyNowModal'
 
 export default function ProductDetails() {
-  const { id } = useParams()
+  const { slug } = useParams()
+  const id = extractProductId(slug)
   const [product, setProduct] = useState(null)
   const [activeImage, setActiveImage] = useState(0)
   const [loading, setLoading] = useState(true)

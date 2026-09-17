@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
 const STATUS_COLORS = {
@@ -11,9 +11,16 @@ const STATUS_COLORS = {
 
 const STATUS_STEPS = ['Paid', 'Shipped', 'Delivered']
 
+function isEmail(value) {
+  return /^\S+@\S+\.\S+$/.test(value)
+}
+
+function isPhone(value) {
+  return /^\d{10}$/.test(value)
+}
+
 export default function TrackOrder() {
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
+  const [input, setInput] = useState('')
   const [orders, setOrders] = useState(null) // null = not searched yet
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,12 +29,15 @@ export default function TrackOrder() {
     e.preventDefault()
     setError('')
 
-    if (!/^\d{10}$/.test(phone.trim())) {
-      setError('Enter a valid 10-digit phone number')
-      return
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError('Enter a valid email')
+    const value = input.trim()
+    let field = null
+
+    if (isPhone(value)) {
+      field = 'customerPhone'
+    } else if (isEmail(value)) {
+      field = 'customerEmail'
+    } else {
+      setError('Enter a valid 10-digit phone number or a valid email')
       return
     }
 
@@ -37,12 +47,17 @@ export default function TrackOrder() {
       const snap = await getDocs(
         query(
           collection(db, 'orders'),
-          where('customerPhone', '==', phone.trim()),
-          where('customerEmail', '==', email.trim().toLowerCase()),
-          orderBy('createdAt', 'desc')
+          where(field, '==', field === 'customerEmail' ? value.toLowerCase() : value)
         )
       )
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      const results = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0
+          const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0
+          return bTime - aTime // newest first
+        })
+      setOrders(results)
     } catch (err) {
       console.error('Track order failed:', err)
       setError('Something went wrong. Please try again.')
@@ -56,20 +71,14 @@ export default function TrackOrder() {
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-display font-semibold text-slate-800 mb-2">Track Your Order</h1>
       <p className="text-slate-500 text-sm mb-6">
-        Enter the phone number and email you used at checkout to see your order status.
+        Enter the phone number or email you used at checkout to see your order status.
       </p>
 
       <form onSubmit={handleSearch} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
         <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Phone number"
-          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
-        />
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Phone number or email"
           className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
@@ -86,7 +95,7 @@ export default function TrackOrder() {
         <div className="mt-8">
           {orders.length === 0 ? (
             <p className="text-slate-500 text-sm text-center">
-              No orders found for this phone number and email.
+              No orders found for this phone number or email.
             </p>
           ) : (
             <div className="space-y-4">

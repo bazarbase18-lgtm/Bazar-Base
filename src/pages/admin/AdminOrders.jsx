@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
 const STATUS_FLOW = {
@@ -21,6 +21,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('All')
   const [updatingId, setUpdatingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -53,6 +54,24 @@ export default function AdminOrders() {
       alert('Could not update status. Try again.')
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  async function handleDelete(order) {
+    const confirmed = window.confirm(
+      `Delete order for "${order.productName}" (${order.customerName})? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setDeletingId(order.id)
+    try {
+      await deleteDoc(doc(db, 'orders', order.id))
+      setOrders((prev) => prev.filter((o) => o.id !== order.id))
+    } catch (err) {
+      console.error('Failed to delete order:', err)
+      alert('Could not delete order. Try again.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -90,6 +109,7 @@ export default function AdminOrders() {
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Date</th>
                 <th className="py-2 pr-4">Action</th>
+                <th className="py-2 pr-4"></th>
               </tr>
             </thead>
             <tbody>
@@ -100,7 +120,7 @@ export default function AdminOrders() {
                     <div>{order.customerName}</div>
                     <div className="text-xs text-slate-400">{order.customerPhone}</div>
                   </td>
-                  <td className="py-3 pr-4">₹{order.amount}</td>
+                  <td className="py-3 pr-4">₹{(order.amount / 100).toLocaleString('en-IN')}</td>
                   <td className="py-3 pr-4">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[order.status] || ''}`}>
                       {order.status}
@@ -125,6 +145,15 @@ export default function AdminOrders() {
                     ) : (
                       <span className="text-slate-300 text-xs">—</span>
                     )}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <button
+                      onClick={() => handleDelete(order)}
+                      disabled={deletingId === order.id}
+                      className="text-red-500 hover:text-red-600 text-xs font-medium disabled:opacity-50"
+                    >
+                      {deletingId === order.id ? 'Deleting…' : 'Delete'}
+                    </button>
                   </td>
                 </tr>
               ))}

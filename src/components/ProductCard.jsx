@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { thumb } from '../lib/cloudinary'
+import { buildProductUrl } from '../lib/slug'
 
 export default function ProductCard({ product }) {
   const discount =
@@ -9,7 +10,7 @@ export default function ProductCard({ product }) {
 
   return (
     <Link
-      to={`/product/${product.id}`}
+      to={buildProductUrl(product)}
       className="group block bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"
     >
       <div className="relative aspect-square bg-slate-50 p-3">
